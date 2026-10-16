@@ -1,0 +1,63 @@
+# Nothing that belongs to the game ever goes in here.
+
+# discs and dumps
+*.iso
+*.gcm
+*.rvz
+*.ciso
+*.nkit
+*.parte*
+
+# build output
+*.exe
+*.dll
+*.lib
+*.obj
+*.o
+*.a
+*.pdb
+*.map
+*.rsp
+*.msix
+*.appx
+build/
+build-*/
+layout/
+objetos/
+
+# signing certificates: yours is yours
+*.pfx
+*.p12
+*.cer
+*.snk
+
+# saves, cards and logs
+*.raw
+*.gci
+Card?A*
+*.log
+melee-salida.txt
+melee-env.txt
+
+# the PC port's own tree, in case this is cloned next to it
+extern/
+src/pc/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# editors and OS
+.vs/
+.vscode/
+.idea/
+*.swp
+*.tmp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# The package tiles are supplied by whoever packages (docs/ASSETS.md).
+package/Assets/*.png

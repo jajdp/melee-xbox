@@ -1,0 +1,242 @@
+# Los cambios de UWP en el Aurora de melee-pc.
+#
+# Aurora es MIT, (c) 2022 Luke Street: https://github.com/encounter/aurora
+#
+# Este parche es SOLO la parte de Aurora del delta del port. Los dos archivos de `src/pc/` que el
+# port tambien necesita no van aqui, porque `999sian/melee-pc` no publica licencia: estan descritos
+# en docs/HOW-IT-WORKS.md.
+#
+#   git apply --directory=<raiz del arbol de melee-pc> patches/aurora-uwp.patch
+#
+# Recompilaciones - https://github.com/jajdp/melee-xbox
+diff --git a/extern/aurora/lib/dawn/BackendBinding.cpp b/extern/aurora/lib/dawn/BackendBinding.cpp
+index cbdf1b6..471d4f1 100644
+--- a/extern/aurora/lib/dawn/BackendBinding.cpp
++++ b/extern/aurora/lib/dawn/BackendBinding.cpp
+@@ -8,13 +8,24 @@
+ #include <SDL3/SDL_video.h>
+ #endif
+ 
++#if defined(AURORA_WINDOWS_STORE)
++// melee-uwp: libuwp.dll (uwp-dep de SternXD) da la CoreWindow de la app.
++extern "C" __declspec(dllimport) void* uwp_GetWindowReference();
++#endif
++
+ namespace aurora::webgpu {
+ namespace utils {
+ 
+ std::shared_ptr<wgpu::ChainedStruct> SetupWindowAndGetSurfaceDescriptorCocoa(SDL_Window* window);
+ 
+ std::shared_ptr<wgpu::ChainedStruct> SetupWindowAndGetSurfaceDescriptor(SDL_Window* window) {
+-#if defined(SDL_PLATFORM_MACOS) || defined(SDL_PLATFORM_IOS) || defined(SDL_PLATFORM_TVOS)
++#if defined(AURORA_WINDOWS_STORE)
++  // En un AppContainer no hay HWND: Dawn presenta sobre la CoreWindow.
++  (void)window;
++  auto desc = std::make_shared<wgpu::SurfaceDescriptorFromWindowsCoreWindow>();
++  desc->coreWindow = uwp_GetWindowReference();
++  return std::move(desc);
++#elif defined(SDL_PLATFORM_MACOS) || defined(SDL_PLATFORM_IOS) || defined(SDL_PLATFORM_TVOS)
+   return SetupWindowAndGetSurfaceDescriptorCocoa(window);
+ #else
+   const auto props = SDL_GetWindowProperties(window);
+diff --git a/extern/aurora/lib/dolphin/dvd/dvd.cpp b/extern/aurora/lib/dolphin/dvd/dvd.cpp
+index db151ee..9bdf514 100644
+--- a/extern/aurora/lib/dolphin/dvd/dvd.cpp
++++ b/extern/aurora/lib/dolphin/dvd/dvd.cpp
+@@ -11,6 +11,7 @@
+ #define WIN32_LEAN_AND_MEAN
+ #define NOMINMAX
+ #include <windows.h>
++#include <string> // melee-uwp: std::wstring de la ruta en UWP
+ #else
+ #include <fcntl.h>
+ #include <sys/mman.h>
+@@ -752,13 +753,35 @@ bool aurora_dvd_open(const char* disc_path) {
+   bool streamReady = false;
+ 
+ #if defined(_WIN32)
++#if defined(AURORA_WINDOWS_STORE)
++  // melee-uwp: CreateFileA, CreateFileMappingA y MapViewOfFile son de escritorio; en un
++  // AppContainer van CreateFile2 (ruta ancha) y las variantes *FromApp.
++  std::wstring widePath;
++  {
++    const int wideLen = MultiByteToWideChar(CP_UTF8, 0, disc_path, -1, nullptr, 0);
++    if (wideLen > 1) {
++      widePath.resize(static_cast<size_t>(wideLen) - 1);
++      MultiByteToWideChar(CP_UTF8, 0, disc_path, -1, widePath.data(), wideLen);
++    }
++  }
++  HANDLE hFile = CreateFile2(widePath.c_str(), GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING, nullptr);
++#else
+   HANDLE hFile = CreateFileA(disc_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
++#endif
+   if (hFile != INVALID_HANDLE_VALUE) {
+     LARGE_INTEGER fileSize;
+     if (GetFileSizeEx(hFile, &fileSize) && fileSize.QuadPart > 0) {
++#if defined(AURORA_WINDOWS_STORE)
++      HANDLE hMapping = CreateFileMappingFromApp(hFile, nullptr, PAGE_READONLY, 0, nullptr);
++#else
+       HANDLE hMapping = CreateFileMappingA(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
++#endif
+       if (hMapping != nullptr) {
++#if defined(AURORA_WINDOWS_STORE)
++        void* mapped = MapViewOfFileFromApp(hMapping, FILE_MAP_READ, 0, 0);
++#else
+         void* mapped = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
++#endif
+         if (mapped != nullptr) {
+           auto* streamData = new MmapStreamData{
+               .data = static_cast<const uint8_t*>(mapped),
+diff --git a/extern/aurora/lib/input.cpp b/extern/aurora/lib/input.cpp
+index 9101f24..0d26e29 100644
+--- a/extern/aurora/lib/input.cpp
++++ b/extern/aurora/lib/input.cpp
+@@ -452,8 +452,14 @@ void persist_controller_for_player(uint32_t player, const GameController* contro
+ void initialize() noexcept {
+   /* Make sure we initialize everything input related now, this will automatically add all of the connected controllers
+    * as expected */
++#ifndef AURORA_WINDOWS_STORE
+   AURORA_ASSERT(SDL_Init(SDL_INIT_HAPTIC | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR),
+                 "Failed to initialize SDL subsystems: {}", SDL_GetError());
++#else
++  // melee-uwp: el SDL3 de UWP no trae haptics ni sensores (cambio de SternXD en uwp-dusk).
++  AURORA_ASSERT(SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD), "Failed to initialize SDL subsystems: {}",
++                SDL_GetError());
++#endif
+ }
+ 
+ struct MouseScrollStatus {
+diff --git a/extern/aurora/lib/io.cpp b/extern/aurora/lib/io.cpp
+index 31749d7..fc37950 100644
+--- a/extern/aurora/lib/io.cpp
++++ b/extern/aurora/lib/io.cpp
+@@ -141,8 +141,16 @@ bool create_directories(const std::filesystem::path& path) noexcept {
+ #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+   try {
+ #endif
++#if defined(AURORA_WINDOWS_STORE)
++    // melee-uwp: el SDL_CreateDirectory del SDL3 de UWP no crea las carpetas intermedias
++    // (la tarjeta va en <usuario>\USA\Card A): en UWP, la del STL de MSVC.
++    std::error_code ec;
++    std::filesystem::create_directories(path, ec);
++    return !ec && std::filesystem::is_directory(path, ec);
++#else
+     const auto pathString = fs_path_to_string(path);
+     return SDL_CreateDirectory(pathString.c_str());
++#endif
+ #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+   } catch (const std::exception& error) { return SDL_SetError("Failed to encode directory path: %s", error.what()); }
+ #endif
+diff --git a/extern/aurora/lib/system_info.cpp b/extern/aurora/lib/system_info.cpp
+index b4a8224..1f4f97e 100644
+--- a/extern/aurora/lib/system_info.cpp
++++ b/extern/aurora/lib/system_info.cpp
+@@ -5,8 +5,12 @@
+ #define WIN32_LEAN_AND_MEAN 1
+ #include <windows.h>
+ #include <combaseapi.h>
++#ifndef AURORA_WINDOWS_STORE
+ #include <wbemidl.h>
+ #include <comutil.h>
++#else
++#include <intrin.h> // melee-uwp: WMI no existe en UWP; el modelo de CPU sale de cpuid
++#endif
+ #include <dxgi.h>
+ #include <wrl/client.h>
+ 
+@@ -71,6 +75,24 @@ static std::string wideStringToUtf8(std::wstring_view str) {
+   return result;
+ }
+ 
++#ifdef AURORA_WINDOWS_STORE
++std::string GetCpuModel() {
++  int regs[4] = {};
++  __cpuid(regs, static_cast<int>(0x80000000u));
++  if (static_cast<unsigned>(regs[0]) < 0x80000004u) {
++    return Unknown;
++  }
++  char buf[49] = {};
++  for (unsigned leaf = 0x80000002u, off = 0; leaf <= 0x80000004u; ++leaf, off += 16) {
++    __cpuidex(regs, static_cast<int>(leaf), 0);
++    std::memcpy(buf + off, regs, 16);
++  }
++  std::string s{buf};
++  while (!s.empty() && s.front() == ' ') s.erase(s.begin());
++  while (!s.empty() && s.back() == ' ') s.pop_back();
++  return s.empty() ? Unknown : s;
++}
++#else
+ std::string GetCpuModel() {
+   // Good fucking lord Microsoft, what the fuck is this?
+   // https://learn.microsoft.com/en-us/windows/win32/wmisdk/example--getting-wmi-data-from-the-local-computer
+@@ -172,6 +194,7 @@ std::string GetCpuModel() {
+ 
+   return result;
+ }
++#endif // AURORA_WINDOWS_STORE
+ 
+ uint64_t GetMemoryAmount() {
+   MEMORYSTATUSEX status;
+diff --git a/extern/aurora/lib/webgpu/gpu.cpp b/extern/aurora/lib/webgpu/gpu.cpp
+index 094b977..50b7a5a 100644
+--- a/extern/aurora/lib/webgpu/gpu.cpp
++++ b/extern/aurora/lib/webgpu/gpu.cpp
+@@ -26,7 +26,7 @@
+ #include "../window.hpp"
+ #include "gpu_prof.hpp"
+ 
+-#ifdef WEBGPU_DAWN
++#if defined(WEBGPU_DAWN) && !defined(AURORA_WINDOWS_STORE) // melee-uwp: la Dawn UWP no expone dawn::native
+ #include "../dawn/TracyPlatform.hpp"
+ #include <dawn/native/DawnNative.h>
+ #endif
+@@ -817,7 +817,7 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
+         .requiredFeatureCount = requiredInstanceFeatures.size(),
+         .requiredFeatures = requiredInstanceFeatures.data(),
+     };
+-#if defined(WEBGPU_DAWN) && !defined(__MINGW32__)
++#if defined(WEBGPU_DAWN) && !defined(__MINGW32__) && !defined(AURORA_WINDOWS_STORE)
+     constexpr std::array instanceToggles{
+         "allow_unsafe_apis",
+     };
+@@ -833,6 +833,15 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
+     dawnInstanceDescriptor.platform = tracy_dawn_platform();
+ #endif
+     instanceDescriptor.nextInChain = &dawnInstanceDescriptor;
++#elif defined(WEBGPU_DAWN) && defined(AURORA_WINDOWS_STORE)
++    // melee-uwp: sin dawn::native, solo los toggles de instancia (se pierde el registro de Dawn).
++    constexpr std::array instanceToggles{
++        "allow_unsafe_apis",
++    };
++    wgpu::DawnTogglesDescriptor instanceTogglesDescriptor{};
++    instanceTogglesDescriptor.enabledToggleCount = instanceToggles.size();
++    instanceTogglesDescriptor.enabledToggles = instanceToggles.data();
++    instanceDescriptor.nextInChain = &instanceTogglesDescriptor;
+ #elif defined(WEBGPU_DAWN)
+     // dawn::native::DawnInstanceDescriptor is unusable from MinGW against the MSVC-built prebuilt
+     // DLL: its constructor is an MSVC-mangled export, and GCC lays the struct out differently
+@@ -1033,6 +1042,16 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
+     }
+     Log.info("Enabling features: {}", featureList);
+ #ifdef WEBGPU_DAWN
++#if defined(AURORA_WINDOWS_STORE)
++    // melee-uwp: la Dawn UWP usa todavía las funciones con userdata, no los callback info.
++    wgpu::DawnCacheDeviceDescriptor cacheDescriptor{};
++    cacheDescriptor.loadDataFunction = [](const void* key, size_t keySize, void* value, size_t valueSize,
++                                          void*) -> size_t {
++      return load_from_cache(key, keySize, value, valueSize, nullptr);
++    };
++    cacheDescriptor.storeDataFunction = [](const void* key, size_t keySize, const void* value, size_t valueSize,
++                                           void*) { store_to_cache(key, keySize, value, valueSize, nullptr); };
++#else
+     wgpu::DawnCacheDeviceDescriptor cacheDescriptor({.nextInChain = nullptr});
+     cacheDescriptor.SetDawnLoadCacheDataCallback(
+         [](std::span<const std::byte> key, std::span<std::byte> value) noexcept -> size_t {
+@@ -1042,6 +1061,7 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
+         [](std::span<const std::byte> key, std::span<const std::byte> value) noexcept {
+           store_to_cache(key.data(), key.size(), value.data(), value.size(), nullptr);
+         });
++#endif
+ 
+     constexpr std::array enableToggles{
+ #if _WIN32
