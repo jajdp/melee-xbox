@@ -5,6 +5,19 @@ All notable changes to this repository. Dates are `YYYY-MM-DD`.
 The versions here are **the repository's**, not the package's. The package version is whatever you
 pass to the packer, and it has to go up on every package you install.
 
+## [1.0.2] — 2026-10-20
+
+### Changed
+
+- **The comments no longer name the author's own console.** Several of them said measurements were
+  taken on "la xbox series cuarto" — a machine name that means nothing to anyone else and should never
+  have left the private project. They now say "an Xbox Series X", which is the fact that matters. Only
+  comments changed; every number and every date is the same.
+- **The README now says which console this was tested on, and which one it was not.** Everything here
+  was built and measured on an **Xbox Series X** in Developer Mode; a **Series S has never been tried**,
+  so nothing here says anything about one. The wording used to say "Xbox Series", which reads as if it
+  covered both, and it does not.
+
 ## [1.0.1] — 2026-10-13
 
 ### Fixed

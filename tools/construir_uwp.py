@@ -8,7 +8,7 @@ Reparto de compiladores, el mismo que usa el autor fuera de Windows x86-64:
   * clang de llvm-mingw con ABI de MSVC (--target=x86_64-pc-windows-msvc) y WINAPI_FAMILY_APP
     para el C++ (Aurora, RmlUi, abseil, imgui, fmt...) y para las dependencias en C.
   * ld.lld en modo link: /APPCONTAINER, base fija 0x10000000 y sin ASLR (los punteros del disco
-    son ranuras de 32 bits; probado en la xbox series cuarto el 2026-10-01).
+    son ranuras de 32 bits; probado en una Xbox Series X el 2026-10-01).
 
 Las órdenes salen del compile_commands.json de la build de escritorio con MSYS2 —la que vive dentro
 del árbol de melee-pc—, que es la lista exacta de unidades de cada objetivo.

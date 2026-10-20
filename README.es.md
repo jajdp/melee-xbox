@@ -2,13 +2,23 @@
 
 Cómo coger el port de PC de *Super Smash Bros. Melee* (GameCube, 2001) —
 [`999sian/melee-pc`](https://github.com/999sian/melee-pc), sobre la decompilación de
-[doldecomp](https://github.com/doldecomp/melee)— y hacerlo correr **en una Xbox Series en modo
+[doldecomp](https://github.com/doldecomp/melee)— y hacerlo correr **en una Xbox Series X en modo
 desarrollador**, como un paquete UWP que compilas y firmas tú.
 
 *(English: [README.md](README.md))*
 
 No es una teoría: el juego arranca, lee el disco, crea la tarjeta de memoria, **se juega con mando**
 y va a **59,86 FPS de media** (medidos en una partida de cuatro CPU de cuatro minutos).
+
+## En qué consola se probó
+
+**En una Xbox Series X**, en modo desarrollador. Las dos consolas en las que se construyó y se probó esto
+son Series X, así que es el único hardware al que se refiere cualquier cosa que se afirme aquí.
+
+**En una Series S no se ha probado nunca, ni una vez.** Es otra máquina: menos memoria disponible para un
+juego y una GPU más floja. Puede que funcione en una, puede que vaya más despacio, o puede que no
+arranque; nada de aquí se ha medido en ella. Si lo ejecutas en una Series S, lo que obtengas no es lo que
+dice este README, y ninguna de las cifras de aquí es una promesa sobre esa consola.
 
 ## Lo que hace raro a este port: dos compiladores
 
