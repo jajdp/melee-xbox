@@ -99,6 +99,22 @@ Seven packages in one evening, each fixing what the previous one uncovered. The 
 
 ## Credits and license
 
+**Almost none of what makes this work is ours.** This repository is a recipe that glues together other people's work; without any one of these pieces there would be no port at all.
+
+| What it does | Who made it | License |
+|---|---|---|
+| **[melee](https://github.com/doldecomp/melee)** — decompiles *Super Smash Bros. Melee* | the **doldecomp** team | none declared |
+| **[aurora](https://github.com/encounter/aurora)** — stands in for the GameCube/Wii GX, the window and input | **Luke Street** (encounter) | MIT, © 2022 |
+| **[uwp-dep](https://github.com/worleydl/uwp-dep)** — Dawn, SDL3, nod and dxcompiler **built for UWP** — the single reason any of this runs on an Xbox | **Daniel Worley** (worleydl) | libuwp: zlib, © 2025 |
+| **[SDL](https://github.com/libsdl-org/SDL)** — window, input and audio | **Sam Lantinga** and the SDL contributors | zlib |
+| **[imgui](https://github.com/ocornut/imgui)** — the in-game options overlay | **Omar Cornut** | MIT |
+| **[Dawn](https://dawn.googlesource.com/dawn)** — the WebGPU implementation | **The Dawn & Tint Authors** (Google) | BSD-3-Clause |
+
+Special mention to **Daniel Worley**: the UWP builds in `uwp-dep` are what make an Xbox port of this possible. We did not build them, we used them.
+
+**The packaging recipe, the tooling and this documentation** are by **Recompilaciones**.
+
+
 Port and tooling by **Recompilaciones**. Released under the [MIT](LICENSE), the license of
 [Aurora](https://github.com/encounter/aurora) (© 2022 Luke Street), which is the third-party code
 this repository patches.
