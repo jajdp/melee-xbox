@@ -251,8 +251,8 @@ def traduce_clang(e, salida):
         argv.append(t)
         i += 1
     argv += DEFS_COMUNES + DEFS_UWP_CLANG + INC_EXTRA_CLANG
-    # Las cabeceras de clang DELANTE de las de MSVC (lección de Diddy Kong Racing: el emmintrin.h
-    # de Visual Studio solo declara las intrínsecas SSE2).
+    # Las cabeceras de clang DELANTE de las de MSVC: el emmintrin.h de Visual Studio solo declara
+    # las intrínsecas SSE2.
     argv += ["-isystem", str(RESOURCE_DIR / "include")]
     for d in os.environ.get("INCLUDE", "").split(";"):
         if d.strip():

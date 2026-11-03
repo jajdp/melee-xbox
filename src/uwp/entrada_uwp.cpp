@@ -168,7 +168,7 @@ int CALLBACK WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   SDL_SetHintWithPriority(SDL_HINT_WINRT_HANDLE_BACK_BUTTON, "1", SDL_HINT_OVERRIDE);
   // Los mandos de la consola solo llegan por Windows.Gaming.Input, y el SDL3 de UWP lo trae apagado
   // por defecto (SDL_HINT_JOYSTICK_WGI = "0"): sin esta pista SDL no ve ningún mando y el juego no
-  // responde a nada (paquete 0.1.4.0). Mario Kart Wii y Dusklight UWP lo encienden igual.
+  // responde a nada (paquete 0.1.4.0). Dusklight UWP, de SternXD, lo enciende igual.
   SDL_SetHintWithPriority(SDL_HINT_JOYSTICK_WGI, "1", SDL_HINT_OVERRIDE);
   return SDL_RunApp(0, nullptr, Juego, nullptr);
 }
